@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -61,7 +62,8 @@ fun GameScreen(
     val scope = rememberCoroutineScope()
 
     // State to manage the color of the "Check Match" button for feedback
-    var buttonColor by remember { mutableStateOf(Color(0xFFCC8899)) }
+    var audioButtonColor by remember { mutableStateOf(Color(0xFFCC8899)) }
+    var visualButtonColor by remember { mutableStateOf(Color(0xFFCC8899)) }
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackBarHostState) }
@@ -75,8 +77,11 @@ fun GameScreen(
         ) {
             GameStatus(
                 currentEventIndex = gameState.currentEventIndex + 1,
-                correctMatches = gameState.correctMatches,
-                incorrectMatches = gameState.incorrectMatches
+                correctVisualMatches = gameState.correctVisualMatches,
+                incorrectVisualMatches = gameState.incorrectVisualMatches,
+                correctAudioMatches = gameState.correctAudioMatches,
+                incorrectAudioMatches = gameState.incorrectAudioMatches,
+                gameType = gameState.gameType
             )
 
             Text(text = "Score: $score", style = MaterialTheme.typography.headlineSmall)
@@ -85,31 +90,60 @@ fun GameScreen(
 
             // Visual stimuli display for 3x3 grid
             if (gameState.gameType == GameType.Visual || gameState.gameType == GameType.AudioVisual) {
-                VisualStimuliGrid(eventValue = gameState.eventValue, gridSize = userSettings.gridSize)
+                VisualStimuliGrid(eventValue = gameState.visualEventValue, gridSize = userSettings.gridSize)
             }
 
             // Audio playback for auditory stimuli
             if (gameState.gameType == GameType.Audio || gameState.gameType == GameType.AudioVisual) {
-                AudioStimuliPlayer(eventValue = gameState.eventValue, eventIndex = gameState.currentEventIndex, numLetters = userSettings.numLetters)
+                AudioStimuliPlayer(eventValue = gameState.audioEventValue, eventIndex = gameState.currentEventIndex, numLetters = userSettings.numLetters)
             }
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            Button(
-                onClick = {
-                    val isCorrect = vm.checkMatch()
-                    if (!isCorrect) {
-                        buttonColor = Color.Red // Change color for incorrect match
-                        scope.launch {
-                            // Reset color after a short delay
-                            kotlinx.coroutines.delay(500)
-                            buttonColor = Color(0xFFCC8899)
-                        }
-                    } },
-                modifier = Modifier.padding(3.dp),
-                colors = ButtonDefaults.buttonColors(buttonColor)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                horizontalArrangement = Arrangement.SpaceAround,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(text = "Check Match")
+                if (gameState.gameType == GameType.Visual || gameState.gameType == GameType.AudioVisual) {
+                    Button(
+                        onClick = {
+                            val isCorrect = vm.checkVisualMatch()
+                            if (!isCorrect) {
+                                visualButtonColor = Color.Red // Change color for incorrect match
+                                scope.launch {
+                                    // Reset color after a short delay
+                                    kotlinx.coroutines.delay(500)
+                                    visualButtonColor = Color(0xFFCC8899)
+                                }
+                            } },
+                        modifier = Modifier.padding(3.dp),
+                        colors = ButtonDefaults.buttonColors(visualButtonColor)
+                    ) {
+                        Text(text = "Check Visual Match")
+                    }
+                }
+
+                if (gameState.gameType == GameType.Audio || gameState.gameType == GameType.AudioVisual) {
+                    Button(
+                        onClick = {
+                            val isCorrect = vm.checkAudioMatch()
+                            if (!isCorrect) {
+                                audioButtonColor = Color.Red // Change color for incorrect match
+                                scope.launch {
+                                    // Reset color after a short delay
+                                    kotlinx.coroutines.delay(500)
+                                    audioButtonColor = Color(0xFFCC8899)
+                                }
+                            } },
+                        modifier = Modifier.padding(3.dp),
+                        colors = ButtonDefaults.buttonColors(audioButtonColor)
+                    ) {
+                        Text(text = "Check Audio Match")
+                    }
+                }
             }
 
             Button(
@@ -143,7 +177,7 @@ fun VisualStimuliGrid(eventValue: Int, gridSize: Int) {
     ) {
         LazyVerticalGrid(
             columns = GridCells.Fixed(gridSize),
-            modifier = Modifier.size(500.dp),
+            modifier = Modifier.size(400.dp),
             verticalArrangement = Arrangement.spacedBy(5.dp),
             horizontalArrangement = Arrangement.spacedBy(5.dp)
         ) {
@@ -210,13 +244,19 @@ fun AudioStimuliPlayer(
 
 
 @Composable
-fun GameStatus(currentEventIndex: Int, correctMatches: Int, incorrectMatches: Int) {
+fun GameStatus(currentEventIndex: Int, correctVisualMatches: Int, incorrectVisualMatches: Int, correctAudioMatches: Int, incorrectAudioMatches: Int, gameType: GameType) {
     Column(
         modifier = Modifier.padding(16.dp),
         horizontalAlignment = Alignment.Start
     ) {
         Text("Current Event Number: $currentEventIndex")
-        Text("Correct Matches: $correctMatches")
-        Text("Incorrect Matches: $incorrectMatches")
+        if (gameType == GameType.Visual || gameType == GameType.AudioVisual) {
+            Text("Correct Visual Matches: $correctVisualMatches")
+            Text("Incorrect Visual Matches: $incorrectVisualMatches")
+        }
+        if (gameType == GameType.Audio || gameType == GameType.AudioVisual) {
+            Text("Correct Audio Matches: $correctAudioMatches")
+            Text("Incorrect Audio Matches: $incorrectAudioMatches")
+        }
     }
 }

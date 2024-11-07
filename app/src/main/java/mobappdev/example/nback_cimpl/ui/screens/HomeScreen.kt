@@ -123,8 +123,12 @@ fun HomeScreen(
                     Button(onClick = { toSetting() }) {
                         Text(text = "Setting")
                     }
+                    Button(onClick = { onStartGame(GameType.AudioVisual) }) {
+                        Text(text = "Dual-nback")
+                    }
                 }
             }
+
             Text(
                 modifier = Modifier.padding(16.dp),
                 text = "Start Game".uppercase(),

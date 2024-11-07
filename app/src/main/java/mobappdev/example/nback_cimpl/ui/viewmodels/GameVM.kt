@@ -43,7 +43,8 @@ interface GameViewModel {
     fun setGameType(gameType: GameType)
     fun startGame()
 
-    fun checkMatch() : Boolean
+    fun checkVisualMatch() : Boolean
+    fun checkAudioMatch() : Boolean
     fun updateSettings(events: Int, interval: Long, n: Int, size: Int, letters: Int)
 }
 
@@ -73,7 +74,8 @@ class GameVM(
     private var job: Job? = null  // coroutine job for the game event
 
     private val nBackHelper = NBackHelper()  // Helper that generate the event array
-    private var events = emptyArray<Int>()  // Array with all events
+    private var visualEvents = emptyArray<Int>()  // Array with all events
+    private var audioEvents = emptyArray<Int>()  // Array with all events
 
     init {
         viewModelScope.launch {
@@ -103,14 +105,16 @@ class GameVM(
         val nrOfEvents = _userSettings.value.numEvents
 
         // Get the events from our C-model (returns IntArray, so we need to convert to Array<Int>)
-        events = nBackHelper.generateNBackString(nrOfEvents, 9, 30, nBack).toList().toTypedArray()  // Todo Higher Grade: currently the size etc. are hardcoded, make these based on user input
-        Log.d("GameVM", "The following sequence was generated: ${events.contentToString()}")
+        visualEvents = nBackHelper.generateNBackString(nrOfEvents, 9, 30, nBack).toList().toTypedArray()
+        audioEvents = nBackHelper.generateNBackString(nrOfEvents, 26, 30, nBack).toList().toTypedArray()
+
+        //Log.d("GameVM", "The following sequence was generated: ${events.contentToString()}")
 
         job = viewModelScope.launch {
             when (gameState.value.gameType) {
-                GameType.Audio -> runAudioGame(events)
+                GameType.Audio -> runAudioGame(audioEvents)
                 GameType.AudioVisual -> runAudioVisualGame()
-                GameType.Visual -> runVisualGame(events)
+                GameType.Visual -> runVisualGame(visualEvents)
             }
             // Todo: update the highscore
             updateHighscore()
@@ -135,41 +139,65 @@ class GameVM(
         }
     }
 
-    override fun checkMatch() : Boolean {
-        // Ensure only one match can be registered per event
-        if (_gameState.value.isMatchChecked) return false
+    override fun checkVisualMatch(): Boolean {
+        if (_gameState.value.isVisualMatchChecked) return false
 
         val nBack = _userSettings.value.nBack
-
-        // Check if the current event matches the event `n` steps back
         val currentIndex = _gameState.value.currentEventIndex
-        val isCorrectMatch = currentIndex >= nBack && events[currentIndex] == events[currentIndex - nBack]
+        val isCorrectMatch = currentIndex >= nBack &&
+                visualEvents[currentIndex] == visualEvents[currentIndex - nBack]
 
         if (isCorrectMatch) {
-            _score.value += 1  // Correct match
+            _score.value += 1
             _gameState.value = _gameState.value.copy(
-                correctMatches = _gameState.value.correctMatches + 1,
-                isMatchChecked = true
+                correctVisualMatches = _gameState.value.correctVisualMatches + 1,
+                isVisualMatchChecked = true
             )
         } else {
-            _score.value -= 1  // Incorrect match
+            _score.value -= 1
             _gameState.value = _gameState.value.copy(
-                incorrectMatches = _gameState.value.incorrectMatches + 1,
-                isMatchChecked = true
+                incorrectVisualMatches = _gameState.value.incorrectVisualMatches + 1,
+                isVisualMatchChecked = true
             )
         }
 
         return isCorrectMatch
     }
+
+    override fun checkAudioMatch(): Boolean {
+        if (_gameState.value.isAudioMatchChecked) return false
+
+        val nBack = _userSettings.value.nBack
+        val currentIndex = _gameState.value.currentEventIndex
+        val isCorrectMatch = currentIndex >= nBack &&
+                audioEvents[currentIndex] == audioEvents[currentIndex - nBack]
+
+        if (isCorrectMatch) {
+            _score.value += 1
+            _gameState.value = _gameState.value.copy(
+                correctAudioMatches = _gameState.value.correctAudioMatches + 1,
+                isAudioMatchChecked = true
+            )
+        } else {
+            _score.value -= 1
+            _gameState.value = _gameState.value.copy(
+                incorrectAudioMatches = _gameState.value.incorrectAudioMatches + 1,
+                isAudioMatchChecked = true
+            )
+        }
+
+        return isCorrectMatch
+    }
+
     private suspend fun runAudioGame(events: Array<Int>) {
         // Reset the state before starting
         _score.value = 0
-        _gameState.value = _gameState.value.copy(isMatchChecked = false, correctMatches = 0, incorrectMatches = 0)
+        _gameState.value = _gameState.value.copy(isAudioMatchChecked = false, correctAudioMatches = 0, incorrectAudioMatches = 0)
         setGameType(GameType.Audio)
 
         for ((index, value) in events.withIndex()) {
             // Update the game state with the current event details
-            _gameState.value = _gameState.value.copy(eventValue = value, currentEventIndex = index, isMatchChecked = false)
+            _gameState.value = _gameState.value.copy(audioEventValue = value, currentEventIndex = index, isAudioMatchChecked = false)
 
             // Display the visual stimulus (e.g., by updating the UI with `eventValue`)
             delay(_userSettings.value.eventInterval)  // Delay between events
@@ -179,20 +207,39 @@ class GameVM(
     private suspend fun runVisualGame(events: Array<Int>){
         // Reset the state before starting
         _score.value = 0
-        _gameState.value = _gameState.value.copy(isMatchChecked = false, correctMatches = 0, incorrectMatches = 0)
+        _gameState.value = _gameState.value.copy(isVisualMatchChecked = false, correctVisualMatches = 0, incorrectVisualMatches = 0)
         setGameType(GameType.Visual)
 
         for ((index, value) in events.withIndex()) {
             // Update the game state with the current event details
-            _gameState.value = _gameState.value.copy(eventValue = value, currentEventIndex = index, isMatchChecked = false)
+            _gameState.value = _gameState.value.copy(visualEventValue = value, currentEventIndex = index, isVisualMatchChecked = false)
 
             // Display the visual stimulus (e.g., by updating the UI with `eventValue`)
             delay(_userSettings.value.eventInterval)  // Delay between events
         }
     }
 
-    private fun runAudioVisualGame(){
+    private suspend fun runAudioVisualGame(){
+        _score.value = 0
+        _gameState.value = _gameState.value.copy(
+            isVisualMatchChecked = false,
+            isAudioMatchChecked = false,
+            correctVisualMatches = 0,
+            incorrectVisualMatches = 0,
+            correctAudioMatches = 0,
+            incorrectAudioMatches = 0
+        )
 
+        for (index in visualEvents.indices) {
+            _gameState.value = _gameState.value.copy(
+                visualEventValue = visualEvents[index],
+                audioEventValue = audioEvents[index],
+                currentEventIndex = index,
+                isVisualMatchChecked = false,
+                isAudioMatchChecked = false
+            )
+            delay(_userSettings.value.eventInterval)
+        }
     }
 
     companion object {
@@ -214,12 +261,16 @@ enum class GameType{
 
 data class GameState(
     // You can use this state to push values from the VM to your UI.
-    val gameType: GameType = GameType.Visual,  // Type of the game (Visual, Audio, or AudioVisual)
-    val eventValue: Int = -1,  // Current value of the event in the sequence
+    val gameType: GameType = GameType.AudioVisual,  // Dual-n by default for this type of game
+    val visualEventValue: Int = -1,  // Current visual event value
+    val audioEventValue: Int = -1,   // Current audio event value
     val currentEventIndex: Int = 0,  // Current index in the sequence of events
-    val isMatchChecked: Boolean = false,  // Prevents multiple matches for the same event
-    val correctMatches: Int = 0,  // Number of correct matches
-    val incorrectMatches: Int = 0  // Number of incorrect matches
+    val isVisualMatchChecked: Boolean = false,  // Prevents multiple matches for the same visual event
+    val isAudioMatchChecked: Boolean = false,   // Prevents multiple matches for the same audio event
+    val correctVisualMatches: Int = 0,  // Number of correct visual matches
+    val incorrectVisualMatches: Int = 0,  // Number of incorrect visual matches
+    val correctAudioMatches: Int = 0,    // Number of correct audio matches
+    val incorrectAudioMatches: Int = 0   // Number of incorrect audio matches
 )
 
 data class UserSettings(

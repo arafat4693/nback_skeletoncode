@@ -1,0 +1,1 @@
+C:\Users\arafa\Documents\kth\nback_skeletoncode\app\src\main\cpp\CMakeLists.txt

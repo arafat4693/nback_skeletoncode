@@ -1,0 +1,4 @@
+C:/Users/arafa/Documents/kth/nback_skeletoncode/app/.cxx/Debug/2p6u2w5s/x86_64/CMakeFiles/nback_cimpl.dir
+C:/Users/arafa/Documents/kth/nback_skeletoncode/app/.cxx/Debug/2p6u2w5s/x86_64/CMakeFiles/JniBridge.dir
+C:/Users/arafa/Documents/kth/nback_skeletoncode/app/.cxx/Debug/2p6u2w5s/x86_64/CMakeFiles/edit_cache.dir
+C:/Users/arafa/Documents/kth/nback_skeletoncode/app/.cxx/Debug/2p6u2w5s/x86_64/CMakeFiles/rebuild_cache.dir
